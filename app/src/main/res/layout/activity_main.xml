@@ -8,14 +8,20 @@
     tools:context="com.a.app.MainActivity">
 
     <TextView
+        android:background="@android:color/darker_gray"
         android:id="@+id/tv1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:text="click"
+        android:textSize="20sp"
+        android:gravity="center"
+
         />
 
     <TextView
         android:id="@+id/showTv"
+        android:textSize="18sp"
+        android:layout_marginTop="10dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Hello World!" />
