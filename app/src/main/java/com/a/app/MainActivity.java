@@ -11,9 +11,16 @@ import com.blankj.utilcode.util.LogUtils;
 
 import org.java_websocket.handshake.ServerHandshake;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.spec.AlgorithmParameterSpec;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.DESKeySpec;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class MainActivity extends AppCompatActivity implements WebsocketListener {
 
@@ -23,8 +30,10 @@ public class MainActivity extends AppCompatActivity implements WebsocketListener
     private static String iv = "jlYljdfOhfFyDFnbPYDFAmbtDFABSOytdfafa";
 
     private static String ikey = "SdfayOdfMNhDFASssfYTfbaapsfuIOfdfasnga";
+    private static String UTF = "utf-8";
 
     private boolean first;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,33 +69,37 @@ public class MainActivity extends AppCompatActivity implements WebsocketListener
     @Override
     public void onOpen(ServerHandshake handshakedata) {
         c.send("ping=\"ping\"");
-        first=true;
+        first = true;
     }
 
     @Override
     public void onMessage(String message) {
         show(message);
-        if (first&&"Pong".equals(message)){
-            first=false;
+        if (first && "Pong".equals(message)) {
+            first = false;
             EquipmentDB db = new EquipmentDB();
             db.Mac = DeviceUtils.getMacAddress();
             try {
-                db.Sn = new String(EncryptUtils.encryptDES(DeviceUtils.getAndroidID().getBytes("utf-8"), ikey.getBytes(), "DES", iv.getBytes()), "utf-8");
-            } catch (UnsupportedEncodingException e) {
+                db.Sn = DeviceUtils.getAndroidID();
+                String des = new String(EncryptUtils.encryptDES(GsonUtil.GsonString(db).getBytes(UTF), ikey.substring(0,32).getBytes(UTF),
+                        "DES/CBC/PKCS5Padding", iv.getBytes(UTF)));
+                LogUtils.i(des);
+                c.send(des);
+            } catch (Exception e) {
                 e.printStackTrace();
             }
-            c.send(GsonUtil.GsonString(db));
-        }else {
-            if (!"Pong".equals(message)){
+
+        } else {
+            if (!"Pong".equals(message)) {
                 LogUtils.i(message);
                 EquipMsg equipMsg = GsonUtil.GsonToBean(message, EquipMsg.class);
-                if (equipMsg!=null&&equipMsg.MsgType==MsgType.Login){
+                if (equipMsg != null && equipMsg.MsgType == MsgType.Login) {
                     show("login success");
-                }else {
+                } else {
                     assert equipMsg != null;
-                    show(equipMsg.MsgType+"");
+                    show(equipMsg.MsgType + "");
                 }
-            }else{
+            } else {
                 show(message);
             }
         }
@@ -101,5 +114,36 @@ public class MainActivity extends AppCompatActivity implements WebsocketListener
     @Override
     public void onError(Exception ex) {
 
+    }
+
+    private static byte[] symmetricTemplate(final byte[] data,
+                                            final byte[] key,
+                                            final String algorithm,
+                                            final String transformation,
+                                            final byte[] iv,
+                                            final boolean isEncrypt) {
+        if (data == null || data.length == 0 || key == null || key.length == 0) return null;
+        try {
+            SecretKey secretKey;
+            if ("DES".equals(algorithm)) {
+                DESKeySpec desKey = new DESKeySpec(key);
+                SecretKeyFactory keyFactory = SecretKeyFactory.getInstance(algorithm);
+                secretKey = keyFactory.generateSecret(desKey);
+            } else {
+                secretKey = new SecretKeySpec(key, algorithm);
+            }
+            Cipher cipher = Cipher.getInstance(transformation);
+            if (iv == null || iv.length == 0) {
+                cipher.init(isEncrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, secretKey);
+            } else {
+                AlgorithmParameterSpec params = new IvParameterSpec(iv);
+                cipher.init(isEncrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, secretKey, params);
+            }
+            cipher.getBlockSize();
+            return cipher.doFinal(data);
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
