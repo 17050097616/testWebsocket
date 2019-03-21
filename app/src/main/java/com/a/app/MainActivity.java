@@ -6,7 +6,7 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.blankj.utilcode.util.DeviceUtils;
-import com.blankj.utilcode.util.EncryptUtils;
+import com.blankj.utilcode.util.EncodeUtils;
 import com.blankj.utilcode.util.LogUtils;
 
 import org.java_websocket.handshake.ServerHandshake;
@@ -81,18 +81,20 @@ public class MainActivity extends AppCompatActivity implements WebsocketListener
             db.Mac = DeviceUtils.getMacAddress();
             try {
                 db.Sn = DeviceUtils.getAndroidID();
-                String des = new String(EncryptUtils.encryptDES(GsonUtil.GsonString(db).getBytes(UTF), ikey.substring(0,32).getBytes(UTF),
-                        "DES/CBC/PKCS5Padding", iv.getBytes(UTF)));
-                LogUtils.i(des);
-                c.send(des);
+                String encode = new String(EncodeUtils.base64Encode(GsonUtil.GsonString(db)));
+//                String encode = new String(EncryptUtils.encryptDES(GsonUtil.GsonString(db).getBytes(UTF), ikey.substring(0,32).getBytes(UTF),
+//                        "DES/CBC/PKCS5Padding", iv.getBytes(UTF)));
+                LogUtils.i(encode);
+                c.send(encode);
             } catch (Exception e) {
                 e.printStackTrace();
             }
 
         } else {
             if (!"Pong".equals(message)) {
-                LogUtils.i(message);
-                EquipMsg equipMsg = GsonUtil.GsonToBean(message, EquipMsg.class);
+                String deCode = new String(EncodeUtils.base64Decode(message));
+                LogUtils.i(deCode);
+                EquipMsg equipMsg = GsonUtil.GsonToBean(deCode, EquipMsg.class);
                 if (equipMsg != null && equipMsg.MsgType == MsgType.Login) {
                     show("login success");
                 } else {
